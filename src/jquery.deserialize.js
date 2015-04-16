@@ -1,67 +1,104 @@
-/**
- * @author Maxim Vasiliev
- * Date: 21.01.2010
- * Time: 14:00
- */
-
 (function($)
-{
+	{
 	/**
 	 * jQuery.deserialize plugin
 	 * Fills elements in selected containers with data extracted from URLencoded string
-	 * @param data URLencoded data
+	 * @param data URLencoded data or array of key-value pairs (jQuery.serializeArray() compatible) or plain object
 	 * @param clearForm if true form will be cleared prior to deserialization
 	 */
 	$.fn.deserialize = function(data, clearForm)
-	{
-		this.each(function(){
+		{
+		this.each(function()
+			{
 			deserialize(this, data, !!clearForm);
-		});
-	};
+			});
+		};
 
 	/**
 	 * Fills specified form with data extracted from string
 	 * @param element form to fill
-	 * @param data URLencoded data
+	 * @param data URLencoded data or array of key-value pairs (jQuery.serializeArray() compatible) or plain object
 	 * @param clearForm if true form will be cleared prior to deserialization
 	 */
 	function deserialize(element, data, clearForm)
-	{
-		var splits = decodeURIComponent(data).split('&'),
+		{
+		var keyvals = {},
 			i = 0,
 			split = null,
 			key = null,
 			value = null,
-			splitParts = null;
-
+			splitParts = null,
+			selectorElemsVal = 'select,input:not([type=submit],[type=button],[type=reset],[type=reset],[type=checkbox],[type=radio]),textarea',
+			selectorElemsChecked = 'input[type="checkbox"],input[type="radio"]';
+		
 		if (clearForm)
-		{
-			$('input[type="checkbox"],input[type="radio"]', element).removeAttr('checked');
-			$('select,input[type="text"],input[type="password"],input[type="hidden"],textarea', element).val('');
-		}
-
-		var kv = {};
-		while(split = splits[i++]){
-			splitParts = split.split('=');
-			key = splitParts[0] || '';
-			value = (splitParts[1] || '').replace(/\+/g, ' ');
+			{
+			$(selectorElemsChecked, element).removeAttr('checked');
+			$(selectorElemsVal, element).val('');
+			}
+		
+		if (typeof data == 'string')
+			{
+			data = data.split('&');
+			while (split = data[i++])
+				{
+				splitParts = split.split('=', 2);
+				key = decodeURIComponentPlus(splitParts[0] || '');
+				value = splitParts.length > 1 ? decodeURIComponentPlus(splitParts[1]) : true;
+				
+				if (key != '')
+					{
+					if (key in keyvals)
+						{
+						if ($.type(keyvals[key]) !== 'array')
+							keyvals[key] = [keyvals[key]];
+						
+						keyvals[key].push(value);
+						}
+					else
+						keyvals[key] = value;
+					}
+				}
+			}
+		else if (typeof data == 'object')
+			{
+			if (data.constructor.name == 'Array')
+				{
+				for (i = 0; i < data.length; i++)
+					keyvals[data[i].name] = data[i].value;
+				}
+			else
+				keyvals = data;
+			}
+		
+		for (key in keyvals)
+			{
+			value = keyvals[key];
 			
-			if (key != ''){
-				if( key in kv ){
-					if( $.type(kv[key]) !== 'array' )
-						kv[key] = [kv[key]];
-					
-					kv[key].push(value);
-				}else
-					kv[key] = value;				
+			/*
+			// Guess checkboxes mode:
+			$(selectorElemsChecked, element)
+				.filter(function()
+					{
+					return this.name == key && ($(this).val() == value || $(this).is('[type=checkbox]'));
+					})
+				.prop('checked', !!value);
+			*/
+			
+			$(selectorElemsChecked, element)
+				.filter('[name="'+ key +'"]')
+				.prop('checked', false)
+				.filter(function() { return $(this).val() == value; })
+				.prop('checked', true);
+			$(selectorElemsVal, element)
+				.filter('[name="'+ key +'"]')
+				.val(value);
 			}
 		}
 		
-		for( key in kv ){
-			value = kv[key];
-			
-			$('input[type="checkbox"][name="'+ key +'"][value="'+ value +'"],input[type="radio"][name="'+ key +'"][value="'+ value +'"]', element).prop('checked', true);
-			$('select[name="'+ key +'"],input[type="text"][name="'+ key +'"],input[type="password"][name="'+ key +'"],input[type="hidden"][name="'+ key +'"],textarea[name="'+ key +'"]', element).val(value);
+	function decodeURIComponentPlus(s)
+		{
+		return decodeURIComponent(s ? (s+'').replace(/\+/g, '%20') : '');
 		}
-	}
-})(jQuery);
+	
+	})(jQuery);
