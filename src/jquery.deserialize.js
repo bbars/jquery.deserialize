@@ -36,7 +36,7 @@
         var cfg = {
             clearForm: false,
             triggerChange: [],
-            onUnknown: null, // function() {...} might be here
+            onUnknown: null // function() {...} might be here
             };
         
         if (typeof _cfg == 'object')
@@ -91,16 +91,11 @@
         if (!cfg.triggerChange)
             cfg.triggerChange = false;
         else if (typeof cfg.triggerChange != 'object' || cfg.triggerChange.constructor.name != 'Array')
-            {
-            cfg.triggerChange = [];
-            for (key in keyvals)
-                cfg.triggerChange.push(key);
-            }
+            cfg.triggerChange = true;
         
         for (key in keyvals)
             {
             value = keyvals[key];
-            
             /*
             // Guess checkboxes mode:
             $(selectorElemsChecked, element)
@@ -112,31 +107,37 @@
             */
             var changed = { elemsChecked: null, elemsVal: null };
             
-            changed.elemsChecked = $element.find(selectorElemsChecked)
-                .filter('[name="'+ key +'"]')
-                .prop('checked', false)
-                .filter(function() { return $(this).val() == value; })
-                .prop('checked', true);
-            changed.elemsVal = $element.find(selectorElemsVal)
-                .filter('[name="'+ key +'"]')
-                .val(value);
-            
-            if (!changed.elemsChecked.length && !changed.elemsVal.length)
+            if (typeof value != 'undefined')
                 {
-                if (typeof cfg.onUnknown == 'function')
-                    cfg.onUnknown.call($element, key, value, keyvals);
+                changed.elemsChecked = $element.find(selectorElemsChecked)
+                    .filter('[name="'+ key +'"]')
+                    .removeAttr('checked')
+                    .prop('checked', false)
+                    .filter(function() { return $(this).val() == value; })
+                    .attr('checked', 'checked')
+                    .prop('checked', true);
+                changed.elemsVal = $element.find(selectorElemsVal)
+                    .filter('[name="'+ key +'"]')
+                    .val(value);
                 }
-            else
+            
+            if ((changed.elemsChecked && changed.elemsChecked.length)
+            || (changed.elemsVal && changed.elemsVal.length))
                 {
-                if (cfg.triggerChange && cfg.triggerChange.indexOf(key) > -1)
+                if (cfg.triggerChange && (cfg.triggerChange === true || cfg.triggerChange.indexOf(key) > -1))
                     {
                     changed.elemsChecked && changed.elemsChecked.length ? changed.elemsChecked.change() : 0;
                     changed.elemsVal && changed.elemsVal.length ? changed.elemsVal.change() : 0;
                     }
                 }
+            else
+                {
+                if (typeof cfg.onUnknown == 'function')
+                    cfg.onUnknown.call($element, key, value, keyvals);
+                }
             }
         }
-        
+    
     function decodeURIComponentPlus(s)
         {
         return decodeURIComponent(s ? (s+'').replace(/\+/g, '%20') : '');
